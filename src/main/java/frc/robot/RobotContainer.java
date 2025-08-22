@@ -13,6 +13,7 @@ import static edu.wpi.first.units.Units.*;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.math.controller.PIDController;
@@ -62,21 +63,29 @@ public class RobotContainer {
     /* Path follower */
     private final SendableChooser<Command> autoChooser; 
 
-    private Double targetHeading; // Use Double for nullability
-    PIDController headingPID = new PIDController(Constants.PIDConstants.HKP, Constants.PIDConstants.HKI, Constants.PIDConstants.HKD);
 
     public final ArmSubsystem m_arm = new ArmSubsystem();
     public final ClimberSubsystem m_climber = new ClimberSubsystem();
     public final RollerSubsystem m_roller = new RollerSubsystem();
 
+
+    private Double targetHeading; // Use Double for nullability
+    PIDController headingPID = new PIDController(Constants.PIDConstants.HKP, Constants.PIDConstants.HKI, Constants.PIDConstants.HKD);
+
     public RobotContainer() {
-        autoChooser = AutoBuilder.buildAutoChooser("Tests");
+
+        NamedCommands.registerCommand("RollerIntake", new RollerIntakeCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
+        NamedCommands.registerCommand("RollerScore", new RollerScoreCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
+        NamedCommands.registerCommand("RotateArm", new RotateArmCommand(m_arm));
+
+        autoChooser = AutoBuilder.buildAutoChooser("SimpleAuto");
         SmartDashboard.putData("Auto Mode", autoChooser);
 
-        configureBindings();
 
         // Warmup PathPlanner to avoid Java pauses
         FollowPathCommand.warmupCommand().schedule();
+
+        configureBindings();
 
     }
 

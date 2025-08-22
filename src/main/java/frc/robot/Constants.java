@@ -4,16 +4,14 @@ public class Constants {
     public static class PIDConstants
     {
         // H - Auto Heading PID
-        public static final double HKP = 1;
-        public static final double HKI = 0;
-        public static final double HKD = 0;
-
+        public static final double HKP = 0.10;   
+        public static final double HKD = 0.0;   
+        public static final double HKI = 0.1;   
         // V - Velocity PID for Roller
-        public static final double VKP = 1;
+        public static final double VKP = 0.05;
         public static final double VKI = 0;
         public static final double VKD = 0;
-        public static final double VKFF = 0; 
-
+        public static final double VKFF = 1.0 / 5676.0;  // ≈ 0.0001762
     }
     public static class OperatorConstants 
     {
@@ -41,7 +39,7 @@ public class Constants {
     public static class RollerConstants
     {
         public static final int ROLLER_MOTOR_ID = 7; 
-        public static final int ROLLER_MOTOR_CURRENT_LIMIT = 60; 
+        public static final int ROLLER_MOTOR_CURRENT_LIMIT = 30; 
         public static final double ROLLER_MOTOR_VOLTAGE_COMP = 12; 
         public static final double CLIMBER_MOTOR_SPEED_DOWN = 12;
         public static final double CLIMBER_SPEED_DOWN = 0.5; 
