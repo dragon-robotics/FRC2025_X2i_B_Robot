@@ -24,7 +24,7 @@ public class ClimberSubsystem extends SubsystemBase
 
     
     public void runClimber(double speed){
-        climbMotor.set(speed * 2);
+        climbMotor.set(speed);
     }
 
     

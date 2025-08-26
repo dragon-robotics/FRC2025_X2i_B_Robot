@@ -4,12 +4,6 @@
 
 package frc.robot;
 
-import javax.swing.text.html.HTMLDocument;
-
-import com.ctre.phoenix6.swerve.SwerveModule;
-
-import static edu.wpi.first.units.Units.*;
-
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -17,35 +11,29 @@ import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.XboxController;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.Constants;
-import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.Constants;
-
 import frc.robot.Commands.ClimberDownCommand;
 import frc.robot.Commands.ClimberUpCommand;
 import frc.robot.Commands.RollerIntakeCommand;
 import frc.robot.Commands.RollerScoreCommand;
 import frc.robot.Commands.RotateArmCommand;
-
-
+import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.ArmSubsystem;
 import frc.robot.subsystems.ClimberSubsystem;
+import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.RollerSubsystem;
 
 public class RobotContainer {
 
-    private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
-    private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
+    private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)*.25; // kSpeedAt12Volts desired top speed
+    private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond)*.3; // 3/4 of a rotation per second max angular velocity
 
     /* Setting up bindings for necessary control of the swerve drive platform */
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -96,25 +84,33 @@ public class RobotContainer {
         // Note that X is defined as forward according to WPILib convention,
         // and Y is defined as to the left according to WPILib convention.
         drivetrain.setDefaultCommand(
-            // Drivetrain will execute this command periodically
-            drivetrain.applyRequest(() ->
-            {
-            boolean joystickActive = Math.abs(joystick.getRightX()) > 0.1;
-            double currentHeading = drivetrain.getHeading();
-            double rotationInput;
-            if (joystickActive)
-            {
-                rotationInput = -joystick.getRightX() * MaxAngularRate;
-            }
-            else
-            {
-                rotationInput = maintainOdometry(joystick, currentHeading);
-            }
+            // // Drivetrain will execute this command periodically
+            // drivetrain.applyRequest(() ->
+            // {
+            //     double translate = -joystick.getLeftY();
+            //     double strafe = -joystick.getLeftX();
+            //     double rotate = joystick.getRightX();
+
+            //     boolean joystickActive = Math.abs(joystick.getRightX()) > 0.1;
+            //     double currentHeading = drivetrain.getHeading();
+            //     double rotationInput;
+            //     if (joystickActive) {
+            //         rotationInput = -joystick.getRightX() * MaxAngularRate;
+            //     }
+            //     else {
+            //         rotationInput = maintainOdometry(joystick, currentHeading);
+            //     }
         
-             return drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed)  // Drive left with negative X (left)
-                    .withRotationalRate(rotationInput);
-        })
+            //     return 
+            //         drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
+            //         .withVelocityY(-joystick.getLeftX() * MaxSpeed)  // Drive left with negative X (left)
+            //         .withRotationalRate(rotationInput);
+                        // Drivetrain will execute this command periodically
+            drivetrain.applyRequest(() ->
+                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
+                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
+                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+            )
         );                                                                                                                                                                                                                                                                                          
 
         // Idle while the robot is disabled. This ensures the configured                              
@@ -129,8 +125,8 @@ public class RobotContainer {
         //     point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
         // ));
 
-        m_operatorController.leftTrigger().whileTrue(new RollerIntakeCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
-        m_operatorController.rightTrigger().onTrue(new RollerScoreCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
+        m_operatorController.leftTrigger(0.2).whileTrue(new RollerIntakeCommand(m_roller, -Constants.RollerConstants.VELOCITY_RPM));
+        m_operatorController.rightTrigger(0.2).whileTrue(new RollerScoreCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
 
         m_operatorController.b().onTrue(new RotateArmCommand(m_arm));
         m_operatorController.pov(0).whileTrue(new ClimberUpCommand(m_climber));
@@ -147,7 +143,7 @@ public class RobotContainer {
 
 
         // reset the field-centric heading on left bumper press
-        joystick.leftBumper().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        joystick.leftBumper().whileTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }

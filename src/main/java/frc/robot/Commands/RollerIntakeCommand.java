@@ -14,9 +14,9 @@ public class RollerIntakeCommand extends Command {
 
     @Override
     public void initialize() {
-        m_roller.runRoller(-rpm);
+        m_roller.runRoller(rpm);
     }
-
+    
     @Override
     public void execute() {
     }

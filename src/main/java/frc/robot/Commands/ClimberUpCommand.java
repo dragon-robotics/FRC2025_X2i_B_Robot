@@ -18,12 +18,13 @@ public class ClimberUpCommand extends Command
 
     @Override
     public void execute() {
-    m_climber.runClimber(ClimberConstants.CLIMBER_SPEED_UP);
+        // System.out.println("are we good?");
+        m_climber.runClimber(ClimberConstants.CLIMBER_SPEED_UP);
     }
 
     @Override
     public void end(boolean interrupted) {
-    m_climber.runClimber(0);
+        m_climber.runClimber(0);
     }
 
     @Override
