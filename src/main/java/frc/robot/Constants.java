@@ -1,5 +1,11 @@
 package frc.robot;
 
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
 public class Constants {
     public static class PIDConstants
     {
@@ -44,5 +50,24 @@ public class Constants {
         public static final double CLIMBER_MOTOR_SPEED_DOWN = 12;
         public static final double CLIMBER_SPEED_DOWN = 0.5; 
         public static final double VELOCITY_RPM = 3000;
+    }
+    public static class VisionConstants {
+        public static final String CAMERA_NAME = "main";
+        public static final AprilTagFieldLayout TAG_LAYOUT = AprilTagFields.kDefaultField.loadAprilTagLayoutField();
+        public static final Transform3d ROBOT_TO_CAM = new Transform3d(
+            new Translation3d( 
+                Units.inchesToMeters(-17.125),
+                Units.inchesToMeters(-17.125),
+                Units.inchesToMeters(6.825)
+            ), 
+            new Rotation3d(
+                0,
+                Units.degreesToRadians(-20),
+                Units.degreesToRadians(-135)
+            )
+            );
+    
+    
+    
     }
 }   
