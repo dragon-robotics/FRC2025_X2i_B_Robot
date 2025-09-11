@@ -76,13 +76,6 @@ public class Robot extends TimedRobot {
   
     @Override
     public void simulationPeriodic() {
-      if (robotContainer != null)
-      {
-        robotContainer.updateSimulation();
-        VisionIOPhotonSim.updateInputs(
-          new VisionIOInputs(), 
-          )
-      }  
     
     }
 }

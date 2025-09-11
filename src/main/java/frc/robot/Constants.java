@@ -6,7 +6,18 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.RobotBase;
+
+
 public class Constants {
+
+    public static final Mode simMode = Mode.SIM;
+    public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
+    public enum Mode {
+        REAL, 
+        SIM, 
+        REPLAY1
+    }
     public static class PIDConstants
     {
         // H - Auto Heading PID
@@ -18,6 +29,7 @@ public class Constants {
         public static final double VKI = 0;
         public static final double VKD = 0;
         public static final double VKFF = 1.0 / 5676.0;  // ≈ 0.0001762
+
     }
     public static class OperatorConstants 
     {
@@ -66,8 +78,28 @@ public class Constants {
                 Units.degreesToRadians(-135)
             )
             );
+
+        public static final double MAX_AMBIGUITY = 0.2; 
+        public static final double MAX_Z_ERROR = 0.5; 
+
+        // allowed uncertainty tolerance in for pose esimtationo
+        public static final double LINEAR_STDDEV_BASE = 0.2; //X/Y error 
+        public static final double ANGULARSTDDEV_BASE = 0.3; // Rotation error
+        
+        // PID for strafing back and forth 
+        public static final double kXP = 1.0;
+        public static final double kXI = 0.0;
+        public static final double kXD = 0.0;
+
+        // PID for strafing left and right 
+        public static final double kYP = 1.0;
+        public static final double kYI = 0.0;
+        public static final double kYD = 0.0;
     
-    
-    
+        // PID for Rotation
+        public static final double kRP = 2.0;
+        public static final double kRI = 0.0;
+        public static final double kRD = 0.0;
     }
+  
 }   
