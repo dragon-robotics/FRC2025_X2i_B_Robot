@@ -14,7 +14,15 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 
+import java.lang.annotation.Target;
+import java.util.Optional;
+
+import org.littletonrobotics.junction.Logger;
+
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -35,8 +43,9 @@ import frc.robot.subsystems.RollerSubsystem;
 import frc.robot.subsystems.Vision.Vision;
 import frc.robot.subsystems.Vision.VisionIO;
 import frc.robot.subsystems.Vision.VisionIOPhotonSim;
+import frc.robot.subsystems.Vision.VisionIOPhotonVision;
 import frc.robot.Commands.Vision.AutoAlign;
-import frc.robot.Constants.VisionConstants;;
+import frc.robot.Constants.VisionConstants;
 public class RobotContainer {
 
     private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -66,13 +75,12 @@ public class RobotContainer {
 
     // Vision simulation
     public RobotContainer() {
-        
+        Logger.recordOutput("Robot/TestData", true);
+
         if (Constants.currentMode == Mode.SIM) {
-            vision = new Vision(drivetrain::addVisionMeasurement, 
-                new VisionIOPhotonSim(() -> drivetrain.getState().Pose)
-            );
-        }else {
-            vision = null;  
+            vision = new Vision(drivetrain::addVisionMeasurement, new VisionIOPhotonSim(VisionConstants.CAMERA_NAME, VisionConstants.ROBOT_TO_CAM, drivetrain::getPose2d));
+        } else {
+            vision = new Vision(drivetrain::addVisionMeasurement, new VisionIOPhotonVision(VisionConstants.CAMERA_NAME,VisionConstants.ROBOT_TO_CAM));
         }
       
         
@@ -87,6 +95,7 @@ public class RobotContainer {
         // Warmup PathPlanner to avoid Java pauses
         FollowPathCommand.warmupCommand().schedule();
         configureBindings();
+        Threads.setCurrentThreadPriority(false, 10);
     }
 
 
@@ -124,15 +133,18 @@ public class RobotContainer {
         m_operatorController.pov(0).whileTrue(new ClimberUpCommand(m_climber));
         m_operatorController.pov(180).whileTrue(new ClimberDownCommand(m_climber));       
         joystick.rightBumper().onTrue(new InstantCommand(() -> {
-            var bestTagPose3d = vision.getBestTagPose3d();
-            if (bestTagPose3d != null) {
-                Pose2d targetPose2d = bestTagPose3d.toPose2d();
-                new AutoAlign(drivetrain, vision, targetPose2d).schedule();
-            } else {
-                System.out.println("No valid vision target; cannot auto-align.");
+            Pose3d tagPose3d = vision.getBestTagPose3d();
+            if (tagPose3d != null) {
+                Pose2d targetPose = new Pose2d(
+                    tagPose3d.getX(), 
+                    tagPose3d.getY(), 
+                    tagPose3d.getRotation().toRotation2d() // proper 2D rotation
+                );
+        
+                new AutoAlign(drivetrain, vision, targetPose).schedule();
             }
-        }
-        ));
+        }));
+
                 // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
 

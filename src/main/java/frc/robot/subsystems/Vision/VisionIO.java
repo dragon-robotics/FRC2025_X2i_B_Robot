@@ -1,7 +1,8 @@
 package frc.robot.subsystems.Vision;
 
-import org.littletonrobotics.junction.AutoLog;
+import java.util.Optional;
 
+import org.littletonrobotics.junction.AutoLog;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -9,7 +10,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 public interface VisionIO { 
     @AutoLog
     public static class VisionIOInputs {
-        boolean connected = false; 
+        public boolean connected = false; 
         public PoseObservation[] poseObservations = new PoseObservation[0];
         public int[] tagIds = new int[0];
         public TargetObservation latestTargetObservation =
@@ -27,11 +28,12 @@ public interface VisionIO {
     // list of pipelines we can use
     public static enum PoseObservationType {
         MEGATAG_2,
-        PHOTONVISION        
+        PHOTONVISION,
+        POSEOBSERVATIONFALLBACK
     }
     // update set of loggable inputs
     // called periodically in subsystem and upodates vision inputs and pose 2D estimation
-    public default void updateInputs(VisionIOInputs inputs) {}
+    public void updateInputs(VisionIOInputs inputs);
 
     // gets the latest offset in pitch and yaw of the target observed 
     public static record TargetObservation(Rotation2d tx, Rotation2d ty) {}

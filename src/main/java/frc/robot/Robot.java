@@ -4,13 +4,18 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+
+import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Vision.VisionIOPhotonSim;
-import frc.robot.subsystems.Vision.VisionIO.VisionIOInputs;
-public class Robot extends TimedRobot {
+import frc.robot.subsystems.Vision.Vision;
+
+public class Robot extends LoggedRobot {
   private static final RobotContainer robotContainer = null;
   
     private Command m_autonomousCommand;
@@ -18,12 +23,27 @@ public class Robot extends TimedRobot {
     private RobotContainer m_robotContainer;
       
         public Robot() {
+          // Set up data receivers like the documentation
+          if (isReal()) {
+            Logger.addDataReceiver(new WPILOGWriter());
+            Logger.addDataReceiver(new NT4Publisher());
+          } else {
+            Logger.addDataReceiver(new NT4Publisher());
+          }
+          
+          // Start AdvantageKit logger
+          Logger.start();
+          
+          // Instantiate RobotContainer
           m_robotContainer = new RobotContainer();
         }
       
         @Override
         public void robotPeriodic() {
+              Threads.setCurrentThreadPriority(true, 99);
           CommandScheduler.getInstance().run(); 
+          // Vision subsystem periodic will be called automatically by CommandScheduler
+          Threads.setCurrentThreadPriority(false, 10);
         }
   
     @Override
@@ -78,4 +98,4 @@ public class Robot extends TimedRobot {
     public void simulationPeriodic() {
     
     }
-}
+  } 

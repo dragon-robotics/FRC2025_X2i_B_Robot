@@ -341,6 +341,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     {
         return getState().Pose.getRotation().getDegrees(); 
     }   
+    
+    public Pose2d getPose2d() {
+        return getState().Pose;
+    }
 
 
 }
