@@ -22,6 +22,7 @@ import org.littletonrobotics.junction.Logger;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -78,9 +79,16 @@ public class RobotContainer {
         Logger.recordOutput("Robot/TestData", true);
 
         if (Constants.currentMode == Mode.SIM) {
-            vision = new Vision(drivetrain::addVisionMeasurement, new VisionIOPhotonSim(VisionConstants.CAMERA_NAME, VisionConstants.ROBOT_TO_CAM, drivetrain::getPose2d));
+            vision = new Vision(drivetrain::addVisionMeasurement, 
+            new VisionIOPhotonSim(
+                VisionConstants.APTAG_POSE_EST_CAM_FL_POS_NAME,
+                VisionConstants.APTAG_POSE_EST_CAM_FL_POS, 
+                drivetrain::getPose2d));
         } else {
-            vision = new Vision(drivetrain::addVisionMeasurement, new VisionIOPhotonVision(VisionConstants.CAMERA_NAME,VisionConstants.ROBOT_TO_CAM));
+            vision = new Vision(drivetrain::addVisionMeasurement, 
+            new VisionIOPhotonVision(
+                VisionConstants.APTAG_POSE_EST_CAM_FL_POS_NAME,
+                VisionConstants.APTAG_POSE_EST_CAM_FL_POS));
         }
       
         
@@ -121,10 +129,8 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-        // joystick.b().whileTrue(drivetrain.applyRequest(() ->
-        //     point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
-        // ));
+        joystick.a().whileTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+      
 
         m_operatorController.leftTrigger(0.2).whileTrue(new RollerIntakeCommand(m_roller, -Constants.RollerConstants.VELOCITY_RPM));
         m_operatorController.rightTrigger(0.2).whileTrue(new RollerScoreCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
@@ -132,20 +138,19 @@ public class RobotContainer {
         m_operatorController.b().onTrue(new RotateArmCommand(m_arm));
         m_operatorController.pov(0).whileTrue(new ClimberUpCommand(m_climber));
         m_operatorController.pov(180).whileTrue(new ClimberDownCommand(m_climber));       
+
+
         joystick.rightBumper().onTrue(new InstantCommand(() -> {
-            Pose3d tagPose3d = vision.getBestTagPose3d();
-            if (tagPose3d != null) {
-                Pose2d targetPose = new Pose2d(
-                    tagPose3d.getX(), 
-                    tagPose3d.getY(), 
-                    tagPose3d.getRotation().toRotation2d() // proper 2D rotation
-                );
-        
-                new AutoAlign(drivetrain, vision, targetPose).schedule();
-            }
+            Pose2d bestTagPose = vision.getReefalignmentTarget("LEFT");
+            new AutoAlign(drivetrain, bestTagPose, vision).schedule();
         }));
 
-                // Run SysId routines when holding back/start and X/Y.
+        joystick.leftBumper().onTrue(new InstantCommand(() -> {
+            Pose2d bestTagPose = vision.getReefalignmentTarget("RIGHT");
+            new AutoAlign(drivetrain, bestTagPose, vision).schedule();
+        }));
+
+        // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
 
 
@@ -156,7 +161,6 @@ public class RobotContainer {
 
 
         // reset the field-centric heading on left bumper press
-        joystick.leftBumper().whileTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }

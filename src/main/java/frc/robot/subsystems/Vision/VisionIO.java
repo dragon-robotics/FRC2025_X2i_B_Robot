@@ -27,9 +27,7 @@ public interface VisionIO {
 
     // list of pipelines we can use
     public static enum PoseObservationType {
-        MEGATAG_2,
         PHOTONVISION,
-        POSEOBSERVATIONFALLBACK
     }
     // update set of loggable inputs
     // called periodically in subsystem and upodates vision inputs and pose 2D estimation

@@ -1,6 +1,8 @@
 package frc.robot.Commands.Vision;
 
 import com.ctre.phoenix6.swerve.SwerveRequest;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.HolonomicDriveController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
@@ -28,102 +30,103 @@ import java.util.Optional;
 public class AutoAlign extends Command {
 
     private final CommandSwerveDrivetrain m_drivetrain;
-    private final Vision m_vision;
-    private final PhotonCamera m_camera;
-    private final PIDController xController = new PIDController(3, 0, 0);
-    private final PIDController yController = new PIDController(3, 0, 0);
+    private final PIDController xController = new PIDController(1, 0, 0);
+    private final PIDController yController = new PIDController(1, 0, 0);
     private final ProfiledPIDController thetaController =
             new ProfiledPIDController(1, 0, 0, new TrapezoidProfile.Constraints(3, 6));
     private final SwerveRequest.ApplyRobotSpeeds applyRobotSpeeds = new SwerveRequest.ApplyRobotSpeeds();
 
 
 
-    private final HolonomicDriveController m_holocontroller;
     PhotonPipelineResult results; 
-    private Trajectory trajectory;
-    private Pose2d targetPose2d;
-    private double startTime;
-    private Timer timer;
     Pose2d robotPose;
     Rotation2d desiredHeading; 
     private final Pose2d goalPose; 
+    private final Vision m_vision; 
 
-    private Trajectory generateTrajectory(Pose2d currentRobot, Pose2d targetPose) {
-        // Create config for trajectory
-        TrajectoryConfig config =
-                new TrajectoryConfig(
-                    3, 6
-                );
-        // An example trajectory to follow.  All units in meters.
-        return TrajectoryGenerator.generateTrajectory(
-                // Start at the current robot pose
-                currentRobot,
-                // Pass through these two interior waypoints, making an 's' curve path
-                List.of(),
-                // End 3 meters straight ahead of where we started, facing forward
-                targetPose,
-                config);
-    }
-
-    public AutoAlign(CommandSwerveDrivetrain drivetrain, Vision vision, Pose2d targetPose) {
+    Pose2d currentRobotPose;
+    public AutoAlign(CommandSwerveDrivetrain drivetrain, Pose2d targetPose, Vision vision) {
         this.m_drivetrain = drivetrain;
-        this.m_vision = vision;
-        this.m_camera = new PhotonCamera(Constants.VisionConstants.CAMERA_NAME);
-        this.m_holocontroller = new HolonomicDriveController(xController, yController, thetaController);
-        
         this.goalPose = targetPose;
-        if (robotPose == null || targetPose == null) {
-            cancel();
-            return;
-        }
-        timer = new Timer();    
-        
-        this.trajectory = generateTrajectory(m_vision.getEstimatedPose(), targetPose);
-        addRequirements(drivetrain);
-        
-        
+        this.m_vision = vision;
+        addRequirements(drivetrain);        
+        thetaController.enableContinuousInput(-Math.PI, Math.PI);
     }
 
     @Override
     public void initialize() {
-        Pose2d currentPose = m_vision.getEstimatedPose();
-        if (currentPose == null) {
-            // Wait for vision to update; do nothing this cycle
-            return;
-        }
-        Pose2d currentRobotPose = m_vision.getEstimatedPose();
-        timer.restart();
-        if (currentRobotPose == null || goalPose == null) {
-            // No valid pose to start from, cancel command
-            cancel();
-            return;
-        }
+
+        currentRobotPose = m_vision.getEstimatedPose();
+        ChassisSpeeds speeds = m_drivetrain.getState().Speeds;
+        
+        ChassisSpeeds fieldRelativeSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+            speeds, currentRobotPose.getRotation()
+        );
+        xController.reset();
+        yController.reset();
+        thetaController.reset(
+            currentRobotPose.getRotation().getRadians(),fieldRelativeSpeeds.omegaRadiansPerSecond
+        );
+         
+
     }
 
     
     @Override
     public void execute() {
-        
-        Trajectory.State goalState = trajectory.sample(timer.get());
 
-        System.out.println("Trajectory start: " + m_vision.getEstimatedPose() + ", end: " + goalPose);
-        System.out.println("Current pose: " + m_vision.getEstimatedPose());
-        double elapsed = timer.get();               
-        // use timer
-        Trajectory.State desiredState = trajectory.sample(elapsed);
+            // Add null check for goalPose
+        if (goalPose == null) {
+        System.err.println("AutoAlign: goalPose is null - cancelling command");
+        cancel();
+        return;
+        }
 
-        ChassisSpeeds speeds = m_holocontroller.calculate(m_vision.getEstimatedPose(), desiredState, goalPose.getRotation());
+        currentRobotPose = m_vision.getEstimatedPose();
+
+        if (currentRobotPose == null) {
+        currentRobotPose = m_drivetrain.getPose2d();
+        if (currentRobotPose == null) {
+            System.err.println("AutoAlign: No robot pose available - cancelling");
+            cancel();
+            return;
+        }
+        }
+        currentRobotPose = m_vision.getEstimatedPose();
+
+        double xSpeed = xController.calculate(
+            currentRobotPose.getX(), goalPose.getX()
+        );
+        double ySpeed = yController.calculate(
+            currentRobotPose.getY(), goalPose.getY()
+        );
+
+      
+        double thetaSpeed = thetaController.calculate(
+            currentRobotPose.getRotation().getRadians(), goalPose.getRotation().getRadians()
+        );
         
-        m_drivetrain.setControl(applyRobotSpeeds.withSpeeds(speeds));      
+        xSpeed = MathUtil.clamp(xSpeed, -3, 3);
+        ySpeed = MathUtil.clamp(ySpeed, -3, 3);
+
+        thetaSpeed = MathUtil.clamp(thetaSpeed, -Math.PI, Math.PI);
+
+        SwerveRequest.FieldCentric fieldCentricRequest = new SwerveRequest.FieldCentric()
+            .withVelocityX(xSpeed)
+            .withVelocityY(ySpeed)
+            .withRotationalRate(thetaSpeed);
+
+        m_drivetrain.setControl(fieldCentricRequest);
     }
 
 
     @Override
     public boolean isFinished() {
-        return timer.hasElapsed(trajectory.getTotalTimeSeconds());
+        return xController.atSetpoint() && yController.atSetpoint() && thetaController.atSetpoint();
     }
     @Override
     public void end(boolean interrupted) {
-        m_drivetrain.setControl(applyRobotSpeeds.withSpeeds(new ChassisSpeeds()));  
+        
+        m_drivetrain.setControl(applyRobotSpeeds.withSpeeds(new ChassisSpeeds()));
     }
 }

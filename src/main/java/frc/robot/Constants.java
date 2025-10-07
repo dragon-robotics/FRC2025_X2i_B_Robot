@@ -67,16 +67,30 @@ public class Constants {
 
     // Vision constants
     public static class VisionConstants {
-        public static final String CAMERA_NAME = "main";
+        public static final String APTAG_POSE_EST_CAM_FL_POS_NAME = "Front-Left Camera";
+        public static final String APTAG_POSE_EST_CAM_FR_POS_NAME = "Front-Right Camera";
 
         // Default field layout for AprilTags
         public static final AprilTagFieldLayout TAG_LAYOUT = AprilTagFields.kDefaultField.loadAprilTagLayoutField();
-
+        public static final int[] REEF_TAG_IDS = {5, 6, 7, 8, 9, 10, 11, 12}; // 2025 reef tags
         // Transform from robot origin to camera
-        public static final Transform3d ROBOT_TO_CAM = new Transform3d(
-            new Translation3d(Units.inchesToMeters(12), Units.inchesToMeters(12), Units.inchesToMeters(9.3)),
-            new Rotation3d(0, Math.toRadians(-20), Math.toRadians(-45)) // Look forward-left
-        );
+        public static final Transform3d APTAG_POSE_EST_CAM_FL_POS =
+        new Transform3d(
+            new Translation3d(
+                Units.inchesToMeters(17.125),
+                Units.inchesToMeters(17.125),
+                Units.inchesToMeters(6.825)),
+            new Rotation3d(0, Units.degreesToRadians(-20), Units.degreesToRadians(45)));
+
+    // Front-Right Camera: Mounted at front-right corner, pointing outward at -30
+    // degrees
+    public static final Transform3d APTAG_POSE_EST_CAM_FR_POS =
+    new Transform3d(
+        new Translation3d(
+            Units.inchesToMeters(17.125),
+            Units.inchesToMeters(-17.125),
+            Units.inchesToMeters(6.825)),
+        new Rotation3d(0, Units.degreesToRadians(-20), Units.degreesToRadians(-45)));
 
         // Maximum allowed ambiguity / error for pose acceptance
         public static final double MAX_AMBIGUITY = 0.2; 
@@ -109,5 +123,6 @@ public class Constants {
         // Debugging constants
         public static final boolean ENABLE_POSE_LOGGING = true;
         public static final boolean ENABLE_TAG_LOGGING = true;
+        
     }
 }

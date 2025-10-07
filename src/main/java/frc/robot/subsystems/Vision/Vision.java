@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 import org.littletonrobotics.junction.Logger;
+import org.photonvision.common.hardware.VisionLEDMode;
 
 public class Vision extends SubsystemBase{
     private final VisionConsumer consumer;
@@ -55,99 +57,90 @@ public class Vision extends SubsystemBase{
 
     @Override 
     public void periodic() {
-        for (int i = 0; i < io.length; i++) {
+             
+        for(int i = 0; i < io.length; i++) {
             io[i].updateInputs(inputs[i]);
-            Logger.processInputs("Vision/Camera" + Integer.toString(i), inputs[i]);       
-            Logger.recordOutput("Vision/Test/ForcedData", true);
-
         }
-        // Initialize logging values
         List<Pose3d> allTagPoses = new LinkedList<>();
         List<Pose3d> allRobotPoses = new LinkedList<>();
         List<Pose3d> allRobotPosesAccepted = new LinkedList<>();
         List<Pose3d> allRobotPosesRejected = new LinkedList<>();
-
-        // Loop over cameras
+        
         for (int cameraIndex = 0; cameraIndex < io.length; cameraIndex++) {
-            // Update disconnected alert
             diconnectedAlerts[cameraIndex].set(!inputs[cameraIndex].connected);
-            // Initialize logging values
-            List<Pose3d> tagPoses = new LinkedList<>();
-            List<Pose3d> robotPoses = new LinkedList<>();
-            List<Pose3d> robotPosesAccepted = new LinkedList<>();
-            List<Pose3d> robotPosesRejected = new LinkedList<>();
-
-            // Add tag poses
-            for (int tagId : inputs[cameraIndex].tagIds) {
-                var tagPose = Constants.VisionConstants.TAG_LAYOUT.getTagPose(tagId);
-                tagPose.ifPresent(tagPoses::add);
-            }
-
-            // Loop over pose observations
-            for (var observation : inputs[cameraIndex].poseObservations) {
-                // Check whether to reject pose
-                boolean rejectPose = observation.tagCount() == 0
-                || (observation.tagCount() == 1 && observation.ambiguity() > Constants.VisionConstants.MAX_AMBIGUITY)
-                || Math.abs(observation.pose().getZ()) > Constants.VisionConstants.MAX_Z_ERROR
-                || observation.pose().getX() < 0.0
-                || observation.pose().getX() > Constants.VisionConstants.TAG_LAYOUT.getFieldLength()
-                || observation.pose().getY() < 0.0
-                || observation.pose().getY() > Constants.VisionConstants.TAG_LAYOUT.getFieldWidth()
-                || observation.tagDistance() > 5.0; // Reject if tags are too far away    
-                // Create floor-constrained pose
-                var originalPose = observation.pose();
-                var floorConstrainedPose = new Pose2d(
-                    originalPose.getTranslation().toTranslation2d(), // Properly extract 2D translation
-                    originalPose.getRotation().toRotation2d()        // Properly extract 2D rotation
-                );               
-                var floorConstrainedPose3d = new Pose3d(
-                    new Translation3d(
-                        floorConstrainedPose.getX(),
-                        floorConstrainedPose.getY(),
-                        0.0  // Z should be 0 for floor-constrained pose
-                    ),
-                    new Rotation3d(0, 0, floorConstrainedPose.getRotation().getRadians())
-                );
-                robotPoses.add(floorConstrainedPose3d);
-
-                if (rejectPose) {
-                    robotPosesRejected.add(floorConstrainedPose3d);
-                    continue; // Skip to next observation
+            
+            List<Pose3d> tagPoses = new LinkedList<>(); 
+            List<Pose3d> robotPoses = new LinkedList<>(); 
+            List<Pose3d> robotPosesAccepted = new LinkedList<>(); 
+            List<Pose3d> robotPosesRejected = new LinkedList<>(); 
+            // get april tag position of every april tag each camera identifies
+            for (int tagID : inputs[cameraIndex].tagIds) {
+                var tagPose = Constants.VisionConstants.TAG_LAYOUT.getTagPose(tagID);
+                if (tagPose.isPresent()) {
+                    tagPoses.add(tagPose.get());
                 }
-                robotPosesAccepted.add(floorConstrainedPose3d);
-
-
-                latestAcceptedPose = floorConstrainedPose;
-
-                double stdDevFactor = Math.pow(observation.tagDistance(), 2.0) / observation.tagCount();
-                double linearStdDev = Constants.VisionConstants.LINEAR_STDDEV_BASE * stdDevFactor;
-                double angularStdDev = Constants.VisionConstants.ANGULAR_STDDEV_BASE * stdDevFactor;
-
-                // if (cameraIndex < Constants.VisionConstants.CAMERA_STDDEV_FACTORS.length) {
-                //     linearStdDev *= Constants.VisionConstants.CAMERA_STDDEV_FACTORS[cameraIndex];
-                //     angularStdDev *= Constants.VisionConstants.CAMERA_STDDEV_FACTORS[cameraIndex];
-                // }
-                consumer.accept(
-                        floorConstrainedPose,
-                        observation.timestamp(),
-                        VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev));
             }
+            
 
-            Logger.recordOutput("Vision/Camera" + cameraIndex + "/TagPoses", tagPoses.toArray(new Pose3d[0]));
-            Logger.recordOutput("Vision/Camera" + cameraIndex + "/RobotPoses", robotPoses.toArray(new Pose3d[0]));
-            Logger.recordOutput("Vision/Camera" + cameraIndex + "/RobotPosesAccepted", robotPosesAccepted.toArray(new Pose3d[0]));
-            Logger.recordOutput("Vision/Camera" + cameraIndex + "/RobotPosesRejected", robotPosesRejected.toArray(new Pose3d[0]));
+            for(var observation: inputs[cameraIndex].poseObservations) {
+                boolean rejectpose = 
+                (observation.tagCount() == 0 || 
+                observation.tagCount() == 1 && observation.ambiguity() > Constants.VisionConstants.MAX_AMBIGUITY
+                || Math.abs(observation.pose().getZ()) > Constants.VisionConstants.MAX_Z_ERROR
+                
+                // pose must be inside of the field 
+                || observation.pose().getX() > Constants.VisionConstants.TAG_LAYOUT.getFieldLength()
+                || observation.pose().getX() < 0.0
+                || observation.pose().getY() > Constants.VisionConstants.TAG_LAYOUT.getFieldWidth()
+                || observation.pose().getY() < 0.0
+                );
 
-            allTagPoses.addAll(tagPoses);
-            allRobotPoses.addAll(robotPoses);
-            allRobotPosesAccepted.addAll(robotPosesAccepted);
-            allRobotPosesRejected.addAll(robotPosesRejected);
+                
+                robotPoses.add(observation.pose());
+                if (rejectpose) {
+                    robotPosesRejected.add(observation.pose());
+                } else {
+                    robotPosesAccepted.add(observation.pose());
+                }
+                if (rejectpose) {
+                    continue;
+                }
+                
+                latestAcceptedPose = observation.pose().toPose2d();
+                double distance = observation.tagDistance(); 
+                int tagCount = observation.tagCount();
+                double timeStampSeconds = observation.timestamp();
+
+                double stdDevFactor = Math.pow(distance, 2.0) / tagCount; 
+
+                double linearStdDev = Constants.VisionConstants.LINEAR_STDDEV_BASE * stdDevFactor;
+                double angularStdDev = Constants.VisionConstants.ANGULAR_STDDEV_BASE * stdDevFactor; 
+
+                Matrix<N3, N1> stdDevs = VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev);
+                consumer.accept(
+                    observation.pose().toPose2d(),
+                    timeStampSeconds, stdDevs);
+
+
+                // log all positiions
+                Logger.recordOutput("Vision/Camera" + cameraIndex + "/RobotPoses", robotPoses.toArray(new Pose3d[(robotPoses.size())]));
+                Logger.recordOutput("Vision/Camera" + cameraIndex +  "/RobotPosesAccepted", robotPoses.toArray(new Pose3d[robotPosesAccepted.size()]));
+                Logger.recordOutput("Vision/Camera" + cameraIndex +  "/RobotPosesRejected", robotPoses.toArray(new Pose3d[robotPosesRejected.size()]));
+                Logger.recordOutput("Vision/Camera" + cameraIndex + "/TagPoses", tagPoses.toArray(new Pose3d[tagPoses.size()]));
+           
+                
+                allTagPoses.addAll(tagPoses);
+                allRobotPoses.addAll(robotPoses);
+                allRobotPosesAccepted.addAll(robotPosesAccepted);
+                allRobotPosesRejected.addAll(robotPosesRejected);
+            }
         }
+            Logger.recordOutput("Vision/AllCameras/TagPoses", allTagPoses.toArray(new Pose3d[allTagPoses.size()]));
+            Logger.recordOutput("Vision/AllCameras/RobotPoses", allRobotPoses.toArray(new Pose3d[allRobotPoses.size()]));
+            Logger.recordOutput("Vision/AllCameras/RobotPosesAccepted", allRobotPosesAccepted.toArray(new Pose3d[allRobotPosesAccepted.size()]));
+            Logger.recordOutput("Vision/AllCameras/RobotPosesRejected", allRobotPosesRejected.toArray(new Pose3d[allRobotPosesRejected.size()]));
 
-        Logger.recordOutput("Vision/Summary/TagPoses", allTagPoses.toArray(new Pose3d[0]));
-        Logger.recordOutput("Vision/Summary/RobotPoses", allRobotPoses.toArray(new Pose3d[0]));
-        Logger.recordOutput("Vision/Summary/RobotPosesAccepted", allRobotPosesAccepted.toArray(new Pose3d[0]));
-        Logger.recordOutput("Vision/Summary/RobotPosesRejected", allRobotPosesRejected.toArray(new Pose3d[0]));
+
     }
     
     @FunctionalInterface
@@ -164,47 +157,75 @@ public class Vision extends SubsystemBase{
     }
 
 
-  public Pose3d getBestTagPose3d() {
-    List<PoseObservation> validObservations = new ArrayList<>();
+    public Pose3d getBestTagPose3d() {
+        int closestTagID = -1;
+        
+        double closestDistance = Double.MAX_VALUE;
+        
+        for (VisionIOInputs input : inputs) {
+            if (input.tagIds == null) continue;
+            
+            for (int i = 0; i < input.tagIds.length; i++) {
+                int tagId = input.tagIds[i];
 
-    for (VisionIOInputs cameraInputs : inputs) {
-        for (PoseObservation obs : cameraInputs.poseObservations) {
-            boolean valid = obs.tagCount() > 0
-                    && obs.ambiguity() < Constants.VisionConstants.MAX_AMBIGUITY
-                    && obs.pose().getX() >= 0
-                    && obs.pose().getX() <= Constants.VisionConstants.TAG_LAYOUT.getFieldLength()
-                    && obs.pose().getY() >= 0
-                    && obs.pose().getY() <= Constants.VisionConstants.TAG_LAYOUT.getFieldWidth();
-
-            if (valid) {
-                validObservations.add(obs);
+                if (!isReefTag(tagId)) continue;
+                
+                Optional<Pose3d> tagPose = VisionConstants.TAG_LAYOUT.getTagPose(tagId);
+                if (!tagPose.isPresent()) continue;
+                
+                if (i < input.poseObservations.length) {
+                    PoseObservation observation = input.poseObservations[i];
+                    double distance = observation.tagDistance();
+                    
+                    if (distance > 0.1 && distance < 4.0 && distance < closestDistance) { // Max 4m limit
+                        closestDistance = distance;
+                        closestTagID = tagId;
+                    }
+                }
             }
         }
+        
+        if (closestTagID == -1) return null;
+        
+        return VisionConstants.TAG_LAYOUT.getTagPose(closestTagID).orElse(null);
     }
 
-    if (validObservations.isEmpty()) {
-        return null; // no valid tags
+    public Pose2d getReefalignmentTarget(String side) {
+        Pose3d tagPose3d = getBestTagPose3d(); 
+
+        if (tagPose3d == null) {
+            return null; 
+        }
+
+        Rotation2d tagYaw = tagPose3d.getRotation().toRotation2d(); 
+        // minimum 
+        double offsetDisance = 1.0; 
+        double sideOffset = 0.0;
+
+        // perform auto align to reef right or left based on input side
+        switch (side) {
+            case "LEFT":
+                sideOffset = Math.PI / 2;
+                break;
+        
+            case "RIGHT":
+                sideOffset = -Math.PI / 2;
+                break;
+            default:
+                sideOffset = Math.PI;
+        }
+
+        double robotX = tagPose3d.getX() + Math.cos(tagYaw.getRadians() + sideOffset) * offsetDisance;
+        double robotY = tagPose3d.getY() + Math.sin(tagYaw.getRadians() + sideOffset) * offsetDisance;
+        double faceTagAngle = Math.atan2(tagPose3d.getY() - robotY, tagPose3d.getX() - robotX);
+        
+        Pose2d targetPose = new Pose2d(robotX, robotY, new Rotation2d(faceTagAngle));
+
+        return targetPose; 
     }
 
-    // Average X/Y/Z
-    double avgX = validObservations.stream().mapToDouble(o -> o.pose().getX()).average().orElse(0);
-    double avgY = validObservations.stream().mapToDouble(o -> o.pose().getY()).average().orElse(0);
-    double avgZ = validObservations.stream().mapToDouble(o -> o.pose().getZ()).average().orElse(0);
-
-    // Average rotation by converting to unit vectors
-    double sumSin = 0;
-    double sumCos = 0;
-    for (PoseObservation obs : validObservations) {
-        Rotation3d rot = obs.pose().getRotation();
-        double yaw = rot.getZ(); // yaw around vertical axis
-        sumSin += Math.sin(yaw);
-        sumCos += Math.cos(yaw);
+    private boolean isReefTag(int tagId) {
+        return tagId >= 6 && tagId <= 11 || tagId >= 17 && tagId <= 21;
     }
-    double avgYaw = Math.atan2(sumSin / validObservations.size(), sumCos / validObservations.size());
+}    
 
-    Rotation3d avgRotation = new Rotation3d(0, 0, avgYaw);
-
-    return new Pose3d(avgX, avgY, avgZ, avgRotation);
-}
-
-}
