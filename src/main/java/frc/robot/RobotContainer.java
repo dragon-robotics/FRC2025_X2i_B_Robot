@@ -33,11 +33,10 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.ArmSubsystem;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.RollerSubsystem;
-import frc.robot.subsystems.Vision.VisionIO;
-import frc.robot.subsystems.Vision.VisionIO.VisionIOInputs;
-import frc.robot.subsystems.Vision.VisionIOPhotonSim;
-import frc.robot.subsystems.Vision.VisionIOPhotonSim;
+
+
 public class RobotContainer {
 
     private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond)*.25; // kSpeedAt12Volts desired top speed
@@ -55,7 +54,7 @@ public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(Constants.OperatorConstants.DRIVER_CONTROLLER_PORT);
     private final CommandXboxController m_operatorController = new CommandXboxController(Constants.OperatorConstants.OPERATOR_CONTROLLER_PORT);
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-
+    private final DriveTrain drivetrainCustom = new DriveTrain(drivetrain);
     /* Path follower */
     private final SendableChooser<Command> autoChooser; 
 
@@ -67,18 +66,11 @@ public class RobotContainer {
 
     private Double targetHeading; // Use Double for nullability
     PIDController headingPID = new PIDController(Constants.PIDConstants.HKP, Constants.PIDConstants.HKI, Constants.PIDConstants.HKD);
-    private final CommandSwerveDrivetrain swerveDrivetrain;
 
     // Vision simulation
-    private final VisionIOPhotonSim visionPhotonIO;
-    private final VisionIO.VisionIOInputs visionIO;
-    private Pose2d simulatedPose; // for testing or sim
     public RobotContainer() {
-        swerveDrivetrain = TunerConstants.createDrivetrain();
 
-        visionPhotonIO = new VisionIOPhotonSim(); 
-        visionIO = new VisionIOInputs();
-        simulatedPose = new Pose2d(2.0, 3.0, new Rotation2d(Math.toRadians(90)));
+        
 
 
         NamedCommands.registerCommand("RollerIntake", new RollerIntakeCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
@@ -91,20 +83,11 @@ public class RobotContainer {
 
         // Warmup PathPlanner to avoid Java pauses
         FollowPathCommand.warmupCommand().schedule();
-        SmartDashboard.putData("Sim Field", visionPhotonIO.getSimDebugField());
         configureBindings();
 
     }
 
-    public void updateSimulation() {
-        Pose2d currentPose = swerveDrivetrain.getState().Pose; 
-        visionPhotonIO.updateInputs(visionIO, currentPose);
     
-        if (visionIO.tagCount > 0) {
-            swerveDrivetrain.addVisionMeasurement(visionIO.estimate, visionIO.timestamp);
-        }
-        
-    }
 
 
     private void configureBindings() {
@@ -112,15 +95,21 @@ public class RobotContainer {
 
         // Note that X is defined as forward according to WPILib convention,
         // and Y is defined as to the left according to WPILib convention.
-        drivetrain.setDefaultCommand(
+        // drivetrain.setDefaultCommand(
          
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+        //     drivetrain.applyRequest(() ->
+        //         drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
+        //             .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
+        //             .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+        //     )
+        // );                                                                                                                                                                                                                                                                                          
+        drivetrain.setDefaultCommand(
+            drivetrainCustom.driveCommand(
+                () -> -joystick.getLeftY(),    // Forward/backward
+                () -> -joystick.getLeftX(),    // Left/right strafe  
+                () -> -joystick.getRightX()    // Rotation
             )
-        );                                                                                                                                                                                                                                                                                          
-
+        );
         // Idle while the robot is disabled. This ensures the configured                              
         // neutral mode is applied to the drive motors while disabled.
         final var idle = new SwerveRequest.Idle();
@@ -151,7 +140,10 @@ public class RobotContainer {
 
 
         // reset the field-centric heading on left bumper press
-        joystick.leftBumper().whileTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        joystick.leftBumper().whileTrue(drivetrainCustom.runOnce(() -> {
+            drivetrainCustom.seedFieldCentric();
+            drivetrainCustom.resetHeading();
+        }));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }

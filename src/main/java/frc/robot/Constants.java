@@ -51,23 +51,24 @@ public class Constants {
         public static final double CLIMBER_SPEED_DOWN = 0.5; 
         public static final double VELOCITY_RPM = 3000;
     }
-    public static class VisionConstants {
-        public static final String CAMERA_NAME = "main";
-        public static final AprilTagFieldLayout TAG_LAYOUT = AprilTagFields.kDefaultField.loadAprilTagLayoutField();
-        public static final Transform3d ROBOT_TO_CAM = new Transform3d(
-            new Translation3d( 
-                Units.inchesToMeters(-17.125),
-                Units.inchesToMeters(-17.125),
-                Units.inchesToMeters(6.825)
-            ), 
-            new Rotation3d(
-                0,
-                Units.degreesToRadians(-20),
-                Units.degreesToRadians(-135)
-            )
-            );
-    
-    
+    public static class DriveTrainConstants {
+
+        public static final double HEADING_kP = 4.0;  
+
+        public static final double HEADING_kI = 0.0;
+        public static final double HEADING_kD = 0.0;  
+        
+        // Control Settings
+        public static final double DEADBAND = 0.1;          
+        public static final double HEADING_TOLERANCE = 0.035; 
+        
+        // Speed Scaling
+        public static final double TRANSLATION_SCALE = 1.0; 
+        public static final double ROTATION_SCALE = 0.8;    
+        
+        // Input Shaping
+        public static final double TRANSLATION_EXPONENT = 3.0;
+        public static final double ROTATION_EXPONENT = 2.0;   
     
     }
 }   

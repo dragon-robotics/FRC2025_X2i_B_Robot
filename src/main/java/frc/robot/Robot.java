@@ -8,8 +8,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Vision.VisionIOPhotonSim;
-import frc.robot.subsystems.Vision.VisionIO.VisionIOInputs;
+
 public class Robot extends TimedRobot {
   private static final RobotContainer robotContainer = null;
   
@@ -76,13 +75,7 @@ public class Robot extends TimedRobot {
   
     @Override
     public void simulationPeriodic() {
-      if (robotContainer != null)
-      {
-        robotContainer.updateSimulation();
-        VisionIOPhotonSim.updateInputs(
-          new VisionIOInputs(), 
-          )
-      }  
+ 
     
     }
 }
