@@ -78,6 +78,7 @@ public class RobotContainer {
         NamedCommands.registerCommand("RotateArm", new RotateArmCommand(m_arm));
 
         autoChooser = AutoBuilder.buildAutoChooser("SimpleAuto");
+        
         SmartDashboard.putData("Auto Mode", autoChooser);
 
 
