@@ -69,22 +69,19 @@ public class RobotContainer {
 
     // Vision simulation
     public RobotContainer() {
-
-        
-
-
         NamedCommands.registerCommand("RollerIntake", new RollerIntakeCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
         NamedCommands.registerCommand("RollerScore", new RollerScoreCommand(m_roller, Constants.RollerConstants.VELOCITY_RPM));
         NamedCommands.registerCommand("RotateArm", new RotateArmCommand(m_arm));
-
-        autoChooser = AutoBuilder.buildAutoChooser("SimpleAuto");
-        
-        SmartDashboard.putData("Auto Mode", autoChooser);
-
-
-        // Warmup PathPlanner to avoid Java pauses
-        FollowPathCommand.warmupCommand().schedule();
+    
+        // Configure bindings (includes default command)
         configureBindings();
+        
+        // THEN build auto chooser with correct name
+        autoChooser = AutoBuilder.buildAutoChooser(); // Your actual auto name
+        SmartDashboard.putData("Auto Mode", autoChooser);
+    
+        // Warmup PathPlanner
+        FollowPathCommand.warmupCommand().schedule();
 
     }
 

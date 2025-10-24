@@ -104,10 +104,14 @@ public Command driveCommand(
                 if (currentHeading.isEmpty()) {
                     currentHeading = Optional.of(m_swerve.getState().Pose.getRotation());
                 }
-                m_swerve.setControl(driveMaintainHeading
+                // ADD: Clamp the heading hold rotation to prevent aggressive corrections
+                double headingCorrection = maintainOdometry(m_swerve.getState().Pose.getRotation().getRadians());
+                headingCorrection = MathUtil.clamp(headingCorrection, -2.0, 2.0); // Limit to 2 rad/s
+
+                m_swerve.setControl(drive
                 .withVelocityX(translation)
                 .withVelocityY(strafe)
-                .withTargetDirection(currentHeading.get()));
+                .withRotationalRate(headingCorrection));
 
             }
         }, m_swerve
@@ -150,6 +154,8 @@ public Command driveCommand(
     public void seedFieldCentric() {
         m_swerve.seedFieldCentric();
         currentHeading = Optional.empty(); // Reset heading hold too
+        Timer.delay(0.1);
+
     }
     public CommandSwerveDrivetrain getSwerve()
     {

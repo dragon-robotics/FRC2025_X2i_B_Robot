@@ -4,8 +4,11 @@
   "holonomicMode": true,
   "pathFolders": [
     "LC1",
+    "RC2",
     "S1",
     "S2",
+    "S3",
+    "S6",
     "leavePath"
   ],
   "autoFolders": [],
